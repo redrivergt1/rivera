@@ -1583,3 +1583,110 @@ function toast(m,d){
 </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rivera Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f1f5f9; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="pb-24">
+
+    <header class="p-6 text-center">
+        <h1 class="text-2xl font-black tracking-widest text-emerald-500">RIVERA PRO</h1>
+        <p class="text-[10px] text-slate-500 uppercase tracking-widest">Sistema Independiente de Control</p>
+    </header>
+
+    <div class="grid grid-cols-2 gap-4 px-4 mb-6 text-center">
+        <div class="glass p-4 rounded-3xl">
+            <p class="text-[10px] text-slate-400 uppercase">Balance Actual</p>
+            <h2 id="totalBalance" class="text-xl font-bold text-emerald-400">Q 0.00</h2>
+        </div>
+        <div class="glass p-4 rounded-3xl">
+            <p class="text-[10px] text-slate-400 uppercase">Ahorro Mensual</p>
+            <h2 id="savingsRate" class="text-xl font-bold text-blue-400">0%</h2>
+        </div>
+    </div>
+
+    <div class="px-4 mb-6">
+        <div class="glass p-6 rounded-3xl">
+            <canvas id="expenseChart" style="max-height: 200px;"></canvas>
+        </div>
+    </div>
+
+    <button onclick="document.getElementById('modal').classList.remove('hidden')" class="fixed bottom-24 right-6 bg-emerald-500 w-14 h-14 rounded-full text-white text-3xl shadow-lg shadow-emerald-500/20 z-50">+</button>
+
+    <div id="modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4 z-[100]">
+        <div class="glass w-full max-w-md p-6 rounded-[2.5rem]">
+            <h2 class="text-xl font-bold mb-6 text-center">Registrar Movimiento</h2>
+            <input id="amount" type="number" placeholder="Monto Q" class="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl mb-4 text-center text-2xl font-bold text-emerald-400">
+            <select id="type" onchange="updateCats()" class="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl mb-4">
+                <option value="gasto">Gasto</option>
+                <option value="ingreso">Ingreso</option>
+            </select>
+            <select id="category" class="w-full bg-slate-900 border border-white/10 p-4 rounded-2xl mb-4">
+                </select>
+            <div class="flex gap-4">
+                <button onclick="document.getElementById('modal').classList.add('hidden')" class="flex-1 py-4 text-slate-400 font-bold">Cerrar</button>
+                <button onclick="save()" class="flex-1 py-4 bg-emerald-500 rounded-2xl text-white font-bold shadow-lg shadow-emerald-500/20">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('rivera_v2_db')) || [];
+        const cats = {
+            gasto: ['Vivienda', 'Alimentación', 'Transporte', 'Salud', 'Ocio', 'Otros'],
+            ingreso: ['Salario', 'Bonos/Extras', 'Ventas', 'Otros']
+        };
+
+        function updateCats() {
+            const t = document.getElementById('type').value;
+            document.getElementById('category').innerHTML = cats[t].map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function save() {
+            const val = document.getElementById('amount').value;
+            if(!val) return;
+            db.unshift({
+                id: Date.now(),
+                amount: parseFloat(val),
+                type: document.getElementById('type').value,
+                category: document.getElementById('category').value,
+                date: new Date().toLocaleDateString('es-GT')
+            });
+            localStorage.setItem('rivera_v2_db', JSON.stringify(db));
+            location.reload();
+        }
+
+        window.onload = () => {
+            updateCats();
+            const totalIn = db.filter(r => r.type === 'ingreso').reduce((s, r) => s + r.amount, 0);
+            const totalOut = db.filter(r => r.type === 'gasto').reduce((s, r) => s + r.amount, 0);
+            const balance = totalIn - totalOut;
+            document.getElementById('totalBalance').innerText = `Q ${balance.toLocaleString('es-GT', {minimumFractionDigits:2})}`;
+            document.getElementById('savingsRate').innerText = totalIn > 0 ? Math.round((balance/totalIn)*100) + '%' : '0%';
+
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: cats.gasto,
+                    datasets: [{
+                        data: cats.gasto.map(c => db.filter(r => r.type === 'gasto' && r.category === c).reduce((s, r) => s + r.amount, 0)),
+                        backgroundColor: ['#f43f5e', '#fb923c', '#facc15', '#4ade80', '#60a5fa', '#a78bfa'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: { size: 10 } } } } }
+            });
+        };
+    </script>
+</body>
+</html>
